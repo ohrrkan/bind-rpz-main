@@ -28,3 +28,7 @@ zone "banlist" {
  };
  
 </ol>
+
+## Changes in the Script
+
+The script has been updated to use context managers for file operations to ensure proper handling of file resources. It now writes the sorted and unique lines directly to the output file without using temporary files and shell commands. Additionally, error handling has been added for network requests and file operations.
