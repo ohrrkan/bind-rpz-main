@@ -1,10 +1,8 @@
 import re
 import requests
-import os
 
 ret_noerror = 1
 outfilename = 'db.banlist'
-outfilenametmp = 'db.banlist.tmp'
 
 links=['https://easylist.to/easylist/easylist.txt',
 'https://easylist.to/easylist/easyprivacy.txt',
@@ -19,20 +17,27 @@ links=['https://easylist.to/easylist/easylist.txt',
 'https://easylist-downloads.adblockplus.org/fanboy-notifications.txt',
 'https://raw.githubusercontent.com/Spam404/lists/master/adblock-list.txt']
 
-fd = open(outfilenametmp, "w")
+try:
+    with open(outfilename, "w") as fd:
+        fd.write('$TTL\t1H\n\n@\tSOA\tLOCALHOST. localhost (1 1h 15m 30d 2h)\n\tNS\tLOCALHOST.\n')
 
-for url in links:
-	page = requests.get(url).content.decode('utf-8')
-	for line in page.splitlines():
-		if line.startswith('||') & line.endswith('^') & (re.search('\/', line) is None):
-			line = re.sub('[^a-zA-Z0-9_\-\.\~]+','', line)
-			line = re.sub('\.\.+','.', line)
-			if ret_noerror :
-				fd.write(line + '\tCNAME\t*.\n')
-			else :
-				fd.write(line + '\tCNAME\t.\n')
+        unique_lines = set()
+        for url in links:
+            try:
+                page = requests.get(url).content.decode('utf-8')
+                for line in page.splitlines():
+                    if line.startswith('||') & line.endswith('^') & (re.search('\/', line) is None):
+                        line = re.sub('[^a-zA-Z0-9_\-\.\~]+','', line)
+                        line = re.sub('\.\.+','.', line)
+                        if ret_noerror:
+                            unique_lines.add(line + '\tCNAME\t*.\n')
+                        else:
+                            unique_lines.add(line + '\tCNAME\t.\n')
+            except requests.RequestException as e:
+                print(f"Error fetching {url}: {e}")
 
-fd.close()
-os.system("echo '$TTL\t1H\n\n@\tSOA\tLOCALHOST. localhost (1 1h 15m 30d 2h)\n\tNS\tLOCALHOST.\n' > " + outfilename)
-os.system('sort ' + outfilenametmp + ' | uniq >>'+ outfilename)
-os.system('rm ' + outfilenametmp)
+        for line in sorted(unique_lines):
+            fd.write(line)
+
+except IOError as e:
+    print(f"Error writing to {outfilename}: {e}")
